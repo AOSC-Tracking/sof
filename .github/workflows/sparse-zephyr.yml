@@ -22,7 +22,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # real_cc won't be needed after
+        # https://github.com/zephyrproject-rtos/zephyr/pull/52671
         platforms: [
+          {platform: imx8m,
+           real_cc: xtensa-nxp_imx8m_adsp_zephyr-elf/bin/xtensa-nxp_imx8m_adsp_zephyr-elf-gcc},
           {platform: tgl,
            real_cc: xtensa-intel_s1000_zephyr-elf/bin/xtensa-intel_s1000_zephyr-elf-gcc},
           # This is the WRONG compiler for MTL but for now this is the
