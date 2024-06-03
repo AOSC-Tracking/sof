@@ -1,6 +1,6 @@
-function dcblock_paths(enable)
+function sof_dcblock_paths(enable)
 
-% dcblock_paths(enable)
+% sof_dcblock_paths(enable)
 % enable - set to 1 to enable needed search path
 %          set to 0 to disable the search paths
 %
