@@ -59,6 +59,12 @@ void dai_set_link_hda_config(uint16_t *link_config,
 		}
 		link_cfg.part.stream = common_config->host_dma_config[0]->stream_id;
 		break;
+	case SOF_DAI_INTEL_UAOL:
+		link_cfg.full = 0;
+		link_cfg.part.hchan = out_fmt->channels_count - 1;
+		link_cfg.part.dir = common_config->direction;
+		link_cfg.part.stream = common_config->host_dma_config[0]->stream_id;
+		break;
 	default:
 		/* other types of DAIs not need link_config */
 		return;
@@ -114,6 +120,15 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		 * not during topology parsing.
 		 */
 		channel = 0;
+		break;
+	case SOF_DAI_INTEL_UAOL:
+#if defined(CONFIG_ACE_VERSION_2_0) || defined(CONFIG_ACE_VERSION_3_0)
+		channel = 0;
+		if (dai->host_dma_config[0]->pre_allocated_by_host)
+			channel = dai->host_dma_config[0]->dma_channel_id;
+#else
+		channel = copier_cfg->gtw_cfg.node_id.f.v_index;
+#endif
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -177,6 +192,16 @@ int ipc_dai_data_config(struct dai_data *dd, struct comp_dev *dev)
 			 dev->ipc_config.frame_fmt, dd->stream_id);
 
 		break;
+	case SOF_DAI_INTEL_UAOL:
+#ifdef CONFIG_ZEPHYR_NATIVE_DRIVERS
+		dd->stream_id = dai_get_stream_id(dai_p, dai->direction);
+		dev->ipc_config.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		dd->config.burst_elems = dai_get_fifo_depth(dd->dai, dai->direction);
+		break;
+#else
+		/* only native Zephyr driver supported */
+		return -EINVAL;
+#endif
 	default:
 		/* other types of DAIs not handled for now */
 		comp_warn(dev, "dai_data_config(): Unknown dai type %d", dai->type);

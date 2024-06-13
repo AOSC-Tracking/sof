@@ -151,6 +151,9 @@ const struct device *zephyr_dev[] = {
 #if CONFIG_DAI_NXP_ESAI
 	DT_FOREACH_STATUS_OKAY(nxp_dai_esai, GET_DEVICE_LIST)
 #endif
+#if CONFIG_DAI_INTEL_UAOL
+	DT_FOREACH_STATUS_OKAY(intel_uaol_dai, GET_DEVICE_LIST)
+#endif
 };
 
 static const struct device *dai_get_zephyr_device(uint32_t type, uint32_t index)
@@ -202,6 +205,15 @@ static void dai_set_device_params(struct dai *d)
 		d->dma_dev = DMA_DEV_HDA;
 		d->dma_caps = DMA_CAP_HDA;
 		break;
+	case SOF_DAI_INTEL_UAOL:
+#ifdef CONFIG_DMA_INTEL_ADSP_GPDMA
+		d->dma_dev = DMA_DEV_ALH;
+		d->dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+#else
+		d->dma_dev = DMA_DEV_HDA;
+		d->dma_caps = DMA_CAP_HDA;
+#endif
+		break;
 	default:
 		break;
 	}
@@ -244,6 +256,9 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		break;
 	case SOF_DAI_MEDIATEK_AFE:
 		z_type = DAI_MEDIATEK_AFE;
+		break;
+	case SOF_DAI_INTEL_UAOL:
+		z_type = DAI_INTEL_UAOL;
 		break;
 	default:
 		return NULL;
@@ -288,6 +303,29 @@ void dai_put(struct dai *dai)
 	}
 
 	rfree(dai);
+}
+
+int dai_control(uint32_t node_id, const void *data)
+{
+	union ipc4_connector_node_id node = { .dw = node_id };
+	const struct device *dev;
+	uint32_t z_type;
+	int ret;
+
+	switch (node.f.dma_type) {
+	case ipc4_alh_uaol_stream_link_output_class:
+	case ipc4_alh_uaol_stream_link_input_class:
+		z_type = DAI_INTEL_UAOL;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	dev = dai_get_zephyr_device(z_type, node.f.v_index);
+	if (dev == NULL)
+		return -ENODEV;
+
+	return dai_config_set(dev, NULL, data);
 }
 #else
 static inline const struct dai_type_info *dai_find_type(uint32_t type)
