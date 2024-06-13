@@ -147,6 +147,8 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	cfg.format = sof_cfg->format;
 	cfg.options = sof_cfg->flags;
 	cfg.rate = common_config->sampling_frequency;
+	cfg.channels = common_config->out_fmt->channels_count;
+	cfg.word_size = common_config->out_fmt->valid_bit_depth;
 
 	switch (common_config->type) {
 	case SOF_DAI_INTEL_SSP:
@@ -176,6 +178,12 @@ int dai_set_config(struct dai *dai, struct ipc_config_dai *common_config,
 	case SOF_DAI_IMX_ESAI:
 		cfg.type = DAI_IMX_ESAI;
 		cfg_params = &sof_cfg->esai;
+		break;
+	case SOF_DAI_INTEL_UAOL:
+		cfg.type = DAI_INTEL_UAOL;
+		cfg_params = container_of(spec_config,
+					  struct ipc4_copier_gateway_cfg, config_data);
+		dai_set_link_hda_config(&cfg.link_config, common_config, spec_config);
 		break;
 	default:
 		return -EINVAL;
