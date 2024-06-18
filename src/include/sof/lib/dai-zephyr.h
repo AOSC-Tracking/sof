@@ -282,6 +282,11 @@ void dai_dma_position_update(struct dai_data *dd, struct comp_dev *dev);
  * \brief release llp slot
  */
 void dai_release_llp_slot(struct dai_data *dd);
+
+/**
+ * \brief process ioctl request
+ */
+int dai_control(uint32_t node_id, const void *data);
 /** @}*/
 
 #endif /* __SOF_LIB_DAI_ZEPHYR_H__ */
