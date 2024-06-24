@@ -225,36 +225,29 @@ static void crossover_s32_default(struct comp_data *cd,
 				  int32_t num_sinks,
 				  uint32_t frames)
 {
-	/* Array to hold active sink streams; initialized to null */
 	struct audio_stream *sink_stream[SOF_CROSSOVER_MAX_STREAMS] = { NULL };
 	struct crossover_state *state;
 	const struct audio_stream *source_stream = bsource->data;
 	int32_t *x, *y;
 	int ch, i, j;
 	int idx;
-	int active_sinks = 0;	 /* Counter for active sink streams */
+	int active_sinks = 0;
 	int nch = audio_stream_get_channels(source_stream);
 	int32_t out[num_sinks];
 
-	/* Identify active sinks, avoid processing null sinks later */
 	for (j = 0; j < num_sinks; j++) {
 		if (bsinks[j])
 			sink_stream[active_sinks++] = bsinks[j]->data;
 	}
 
-	/* Process for each channel */
 	for (ch = 0; ch < nch; ch++) {
-		/* Set current crossover state */
 		state = &cd->state[ch];
-		/* Iterate over frames */
 		for (i = 0, idx = ch; i < frames; i++, idx += nch) {
-			/* Read source */
 			x = audio_stream_read_frag_s32(source_stream, idx);
 			cd->crossover_split(*x, out, state);
-			/* Write output to active sinks */
+
 			for (j = 0; j < active_sinks; j++) {
 				y = audio_stream_write_frag_s32(sink_stream[j], idx);
-				/* Copy processed data to sink */
 				*y = out[j];
 			}
 		}
