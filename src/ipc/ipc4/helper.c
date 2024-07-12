@@ -569,8 +569,7 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 					   sink_get_min_free_space(&buffer->stream._sink_api),
 					   buffer->is_shared ?
 						RING_BUFFER_MODE_SHARED : RING_BUFFER_MODE_LOCAL,
-					   buf_get_id(buffer),
-					   &buffer->stream.runtime_stream_params);
+					   buf_get_id(buffer));
 		if (!ring_buffer)
 			goto free;
 	}

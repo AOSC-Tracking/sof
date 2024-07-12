@@ -103,6 +103,11 @@ int buffer_attach_secondary_buffer(struct comp_buffer *buffer, bool at_input,
 		buf_err(buffer, "Only one secondary buffer may be attached to a buffer");
 		return -EINVAL;
 	}
+
+	/* secondary buffer must share audio params with the primary buffer */
+	audio_buffer_replace_audio_stream_params(secondary_buffer,
+						 &buffer->stream.runtime_stream_params);
+
 	if (at_input)
 		buffer->stream.secondary_buffer_sink = secondary_buffer;
 	else
