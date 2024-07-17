@@ -20,6 +20,9 @@ SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
 # Container work is in progress
 SUPPORTED_PLATFORMS+=( acp_6_3 acp_7_0 )
 
+# Platforms support xt-clang compiler build
+CLANG_BUILD_PLATFORMS=( acp_7_0 )
+
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -213,7 +216,12 @@ do
 		# make sure the required version of xtensa tools is installed
 		if [ -d "$XTENSA_TOOLS_DIR" ]
 			then
-				XCC="xt-xcc"
+				if [[ ${CLANG_BUILD_PLATFORMS[@]} =~ $platform ]]
+				then
+					XCC="xt-clang"
+				else
+					XCC="xt-xcc"
+				fi
 			else
 				XCC="none"
 				>&2 printf 'WARNING: %s
@@ -225,7 +233,7 @@ do
 	# --sysroot would.
 	ROOT="$SOF_TOP/../xtensa-root/$HOST"
 
-	if [ "$XCC" == "xt-xcc" ]
+	if [ "$XCC" == "xt-xcc" ] || [ "$XCC" == "xt-clang" ]
 	then
 		TOOLCHAIN=xt
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
@@ -234,7 +242,12 @@ do
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
-		COMPILER="xcc"
+		if [ "$XCC" == "xt-clang" ]
+		then
+			COMPILER="clang"
+		else
+			COMPILER="xcc"
+		fi
 	else
 		TOOLCHAIN=$HOST
 		PATH=$SOF_TOP/../$HOST/bin:$OLDPATH
@@ -253,6 +266,7 @@ do
 	printf 'PATH=%s\n' "$PATH"
 	( set -x # log the main commands and their parameters
 	cmake -DTOOLCHAIN="$TOOLCHAIN" \
+		-DCOMPILER="$COMPILER" \
 		-DROOT_DIR="$ROOT" \
 		-DMEU_OPENSSL="${MEU_OPENSSL}" \
 		"${MEU_PATH_OPTION}" \

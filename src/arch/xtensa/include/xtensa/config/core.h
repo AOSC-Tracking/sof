@@ -54,6 +54,14 @@
 
 #endif
 
+#if defined(CONFIG_ACP_7_0)
+
+#ifndef UINT32_C
+#define UINT32_C(x) x
+#endif
+
+#endif
+
 /*  CONFIGURATION INDEPENDENT DEFINITIONS:  */
 #ifdef __XTENSA__
 #include <xtensa/hal.h>

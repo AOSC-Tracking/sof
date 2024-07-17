@@ -121,18 +121,33 @@ separate_arguments(EXTRA_CFLAGS_AS_LIST  NATIVE_COMMAND  ${EXTRA_CFLAGS})
 
 # No space between -imacros and its argument to avoid CMake
 # de-duplication "feature"
-target_compile_options(sof_options INTERFACE
-	$<$<COMPILE_LANGUAGE:C>:
-		-${optimization_flag} -g
-		-Wall -Werror
-		-Wl,-EL
-		-Wmissing-prototypes
-		-Wpointer-arith
-		${XTENSA_C_FLAGS}
-		${EXTRA_CFLAGS_AS_LIST}
-	>
-	-imacros${CONFIG_H_PATH}
-	)
+if(CMAKE_C_COMPILER MATCHES "xt-clang")
+	target_compile_options(sof_options INTERFACE
+		$<$<COMPILE_LANGUAGE:C>:
+			-${optimization_flag} -g
+			-Wall -Werror
+			-EL
+			-Wmissing-prototypes
+			-Wpointer-arith
+			${XTENSA_C_FLAGS}
+			${EXTRA_CFLAGS_AS_LIST}
+		>
+		-imacros${CONFIG_H_PATH}
+		)
+else()
+	target_compile_options(sof_options INTERFACE
+		$<$<COMPILE_LANGUAGE:C>:
+			-${optimization_flag} -g
+			-Wall -Werror
+			-Wl,-EL
+			-Wmissing-prototypes
+			-Wpointer-arith
+			${XTENSA_C_FLAGS}
+			${EXTRA_CFLAGS_AS_LIST}
+		>
+		-imacros${CONFIG_H_PATH}
+		)
+endif()
 
 if(BUILD_UNIT_TESTS)
 	# rest of this file is not needed for unit tests
