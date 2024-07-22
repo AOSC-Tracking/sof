@@ -109,6 +109,162 @@ int copier_gain_set_fade_params(struct comp_dev *dev, struct dai_data *dd,
 	return 0;
 }
 
+int copier_gain_input16(struct comp_buffer *buff, enum copier_gain_state state,
+			enum copier_gain_envelope_dir dir,
+			struct copier_gain_params *gain_params, uint32_t samples)
+{
+	const size_t frame_bytes = audio_stream_frame_bytes(&buff->stream);
+	uint32_t stream_bytes = audio_stream_sample_bytes(&buff->stream) * samples;
+	uint32_t sg_count = stream_bytes / frame_bytes;
+	int16_t *dst = audio_stream_get_rptr(&buff->stream);
+	uint16_t gain_env[4] = {0};
+	size_t rest;
+	size_t n;
+	int nmax, idx;
+
+	switch (state) {
+	case STATIC_GAIN:
+		/* static gain */
+		if (gain_params->unity_gain)
+			return 0;
+
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s16(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			rest = nmax % audio_stream_get_channels(&buff->stream);
+			for (n = 0; n < nmax; n++) {
+				idx = n % audio_stream_get_channels(&buff->stream);
+				dst[n] *= gain_params->gain_coeffs[idx];
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	case MUTE:
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s16(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			for (n = 0; n < nmax; n++)
+				dst[n] = 0;
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		gain_params->silence_sg_count += sg_count;
+		break;
+	case TRANS_GAIN:
+		for (int i = 0; i < MAX_GAIN_COEFFS_CNT; i++) {
+			gain_env[i] = (uint16_t)(gain_params->gain_env >> I64_TO_I16_SHIFT);
+			gain_env[i] += gain_params->init_gain[i];
+		}
+
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s16(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			rest = nmax % audio_stream_get_channels(&buff->stream);
+			for (n = 0; n < nmax; n++) {
+				idx = n % audio_stream_get_channels(&buff->stream);
+				dst[n] *= gain_params->gain_coeffs[idx];
+				dst[n] *= gain_env[idx];
+			}
+			for (int i = 0; i < MAX_GAIN_COEFFS_CNT; i++) {
+				if (dir == ADDITION)
+					gain_env[i] += gain_params->step_f16;
+				else
+					gain_env[i] -= gain_params->step_f16;
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		gain_params->fade_in_sg_count += sg_count;
+		if (dir == ADDITION)
+			gain_params->gain_env += gain_params->step_i64 * sg_count;
+		else
+			gain_params->gain_env -= gain_params->step_i64 * sg_count;
+		break;
+	}
+	return 0;
+}
+
+int copier_gain_input32(struct comp_buffer *buff, enum copier_gain_state state,
+			enum copier_gain_envelope_dir dir,
+			struct copier_gain_params *gain_params, uint32_t samples)
+{
+	const size_t frame_bytes = audio_stream_frame_bytes(&buff->stream);
+	uint32_t stream_bytes = audio_stream_sample_bytes(&buff->stream) * samples;
+	uint32_t sg_count = stream_bytes / frame_bytes;
+	int32_t *dst = audio_stream_get_rptr(&buff->stream);
+	uint32_t gain_env[2] = {0};
+	uint32_t *init_gain = (uint32_t *)gain_params->init_gain;
+	size_t rest;
+	int32_t n;
+	int32_t nmax, idx;
+
+	switch (state) {
+	case STATIC_GAIN:
+		/* static gain */
+		if (gain_params->unity_gain)
+			return 0;
+
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			rest = nmax % audio_stream_get_channels(&buff->stream);
+			for (n = 0; n < nmax; n++) {
+				idx = n % audio_stream_get_channels(&buff->stream);
+				dst[n] *= gain_params->gain_coeffs[idx];
+			}
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		break;
+	case MUTE:
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			for (n = 0; n < nmax; n++)
+				dst[n] = 0;
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		gain_params->silence_sg_count += sg_count;
+		break;
+	case TRANS_GAIN:
+		for (int i = 0; i < ARRAY_SIZE(gain_env); i++) {
+			gain_env[i] = (uint32_t)(gain_params->gain_env >> I64_TO_I32_SHIFT);
+			gain_env[i] += *init_gain;
+			init_gain++;
+		}
+
+		while (samples) {
+			nmax = audio_stream_samples_without_wrap_s32(&buff->stream, dst);
+			nmax = MIN(samples, nmax);
+			rest = nmax % audio_stream_get_channels(&buff->stream);
+			for (n = 0; n < nmax; n++) {
+				idx = n % audio_stream_get_channels(&buff->stream);
+				dst[n] *= gain_params->gain_coeffs[idx];
+				dst[n] *= gain_env[idx];
+			}
+
+			for (int i = 0; i < ARRAY_SIZE(gain_env); i++) {
+				if (dir == ADDITION)
+					gain_env[i] += gain_params->step_f16;
+				else
+					gain_env[i] -= gain_params->step_f16;
+			}
+
+			samples -= nmax;
+			dst = audio_stream_wrap(&buff->stream, dst + nmax);
+		}
+		gain_params->fade_in_sg_count += sg_count;
+		if (dir == ADDITION)
+			gain_params->gain_env += gain_params->step_i64 * sg_count;
+		else
+			gain_params->gain_env -= gain_params->step_i64 * sg_count;
+		break;
+	}
+	return 0;
+}
+
 #endif
 
 void copier_update_params(struct copier_data *cd, struct comp_dev *dev,
