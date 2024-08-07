@@ -18,6 +18,8 @@ elseif(CONFIG_VANGOGH)
 	set(platform_folder amd/vangogh)
 elseif(CONFIG_ACP_6_3)
         set(platform_folder amd/acp_6_3)
+elseif(CONFIG_ACP_7_0)
+        set(platform_folder amd/acp_7_0)
 elseif(CONFIG_MT8186)
         set(platform_folder mt8186)
 elseif(CONFIG_MT8188)
@@ -119,18 +121,33 @@ separate_arguments(EXTRA_CFLAGS_AS_LIST  NATIVE_COMMAND  ${EXTRA_CFLAGS})
 
 # No space between -imacros and its argument to avoid CMake
 # de-duplication "feature"
-target_compile_options(sof_options INTERFACE
-	$<$<COMPILE_LANGUAGE:C>:
-		-${optimization_flag} -g
-		-Wall -Werror
-		-Wl,-EL
-		-Wmissing-prototypes
-		-Wpointer-arith
-		${XTENSA_C_FLAGS}
-		${EXTRA_CFLAGS_AS_LIST}
-	>
-	-imacros${CONFIG_H_PATH}
-	)
+if(CMAKE_C_COMPILER MATCHES "xt-clang")
+	target_compile_options(sof_options INTERFACE
+		$<$<COMPILE_LANGUAGE:C>:
+			-${optimization_flag} -g
+			-Wall -Werror
+			-EL
+			-Wmissing-prototypes
+			-Wpointer-arith
+			${XTENSA_C_FLAGS}
+			${EXTRA_CFLAGS_AS_LIST}
+		>
+		-imacros${CONFIG_H_PATH}
+		)
+else()
+	target_compile_options(sof_options INTERFACE
+		$<$<COMPILE_LANGUAGE:C>:
+			-${optimization_flag} -g
+			-Wall -Werror
+			-Wl,-EL
+			-Wmissing-prototypes
+			-Wpointer-arith
+			${XTENSA_C_FLAGS}
+			${EXTRA_CFLAGS_AS_LIST}
+		>
+		-imacros${CONFIG_H_PATH}
+		)
+endif()
 
 if(BUILD_UNIT_TESTS)
 	# rest of this file is not needed for unit tests
@@ -474,7 +491,7 @@ add_custom_target(
 # NXP
 set(UNSIGNED_RI imx8 imx8x imx8m imx8ulp)
 # AMD
-list(APPEND UNSIGNED_RI rn rmb vangogh acp_6_3)
+list(APPEND UNSIGNED_RI rn rmb vangogh acp_6_3 acp_7_0)
 # MediaTek
 list(APPEND UNSIGNED_RI mt8186 mt8188 mt8195)
 

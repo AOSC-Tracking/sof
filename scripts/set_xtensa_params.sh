@@ -114,6 +114,13 @@ case "$platform" in
 	HOST="xtensa-acp_6_3-elf"
 	TOOLCHAIN_VER="RI-2021.6-linux"
 	;;
+	acp_7_0)
+ 	PLATFORM="acp_7_0"
+ 	ARCH="xtensa"
+ 	XTENSA_CORE="ACP_7_0_HiFi5_NNE_PROD"
+ 	HOST="xtensa-acp_7_0-elf"
+ 	TOOLCHAIN_VER="RI-2023.11-linux"
+ 	;;
 
     # Mediatek
     mt8186)
