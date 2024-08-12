@@ -138,7 +138,17 @@ static inline enum task_state do_task_run(struct task *task)
 	perf_cnt_init(&task->pcd);
 #endif
 
+#ifdef CONFIG_SOF_TELEMETRY
+	const uint32_t begin_stamp = (uint32_t)telemetry_timestamp();
+#endif
+
 	state = task_run(task);
+
+#ifdef CONFIG_SOF_TELEMETRY
+	const uint32_t current_stamp = (uint32_t)telemetry_timestamp();
+
+	telemetry_update(begin_stamp, current_stamp);
+#endif
 
 #if CONFIG_PERFORMANCE_COUNTERS
 	perf_cnt_stamp(&task->pcd, perf_trace_null, NULL);
@@ -251,19 +261,6 @@ static void zephyr_ll_run(void *data)
 		       NOTIFIER_TARGET_CORE_LOCAL, NULL, 0);
 }
 
-static void schedule_ll_callback(void *data)
-{
-#ifdef CONFIG_SOF_TELEMETRY
-	const uint32_t begin_stamp = (uint32_t)telemetry_timestamp();
-#endif
-	zephyr_ll_run(data);
-#ifdef CONFIG_SOF_TELEMETRY
-	const uint32_t current_stamp = (uint32_t)telemetry_timestamp();
-
-	telemetry_update(begin_stamp, current_stamp);
-#endif
-}
-
 /*
  * Called once for periodic tasks or multiple times for one-shot tasks
  * TODO: start should be ignored in Zephyr LL scheduler implementation. Tasks
@@ -339,7 +336,7 @@ static int zephyr_ll_task_schedule_common(struct zephyr_ll *sch, struct task *ta
 
 	zephyr_ll_unlock(sch, &flags);
 
-	ret = domain_register(sch->ll_domain, task, &schedule_ll_callback, sch);
+	ret = domain_register(sch->ll_domain, task, &zephyr_ll_run, sch);
 	if (ret < 0)
 		tr_err(&ll_tr, "zephyr_ll_task_schedule: cannot register domain %d",
 		       ret);
