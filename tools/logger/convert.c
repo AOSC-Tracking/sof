@@ -354,7 +354,7 @@ static inline void print_table_header(void)
 	if (global_config->time_precision >= 0) {
 		const uint8_t ts_width = timestamp_width(global_config->time_precision);
 
-		fprintf(out_fd, "%*s(us)%*s  ", -ts_width, " TIMESTAMP", ts_width, "DELTA");
+		fprintf(out_fd, "%*s(us)%*s  ", -(int)ts_width, " TIMESTAMP", ts_width, "DELTA");
 	}
 
 	fprintf(out_fd, "%2s %-18s ", "C#", "COMPONENT");
